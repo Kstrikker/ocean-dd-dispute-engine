@@ -1,0 +1,116 @@
+name: ocean-dd-engine
+
+x-app-environment: &app-environment
+  PG_USER: ${PG_USER:-ocean_dd}
+  PG_PASSWORD: ${PG_PASSWORD:-ocean_dd_dev_password}
+  PG_DATABASE: ${PG_DATABASE:-ocean_dd}
+  DATABASE_URL: postgresql+psycopg://${PG_USER:-ocean_dd}:${PG_PASSWORD:-ocean_dd_dev_password}@postgres:5432/${PG_DATABASE:-ocean_dd}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  PYTHONPATH: /app/src
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-ocean_dd}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-ocean_dd_dev_password}
+      POSTGRES_DB: ${PG_DATABASE:-ocean_dd}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - ocean_dd_network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --save
+      - "60"
+      - "1"
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ocean_dd_network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    command:
+      - uvicorn
+      - ocean_dd.api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    environment:
+      <<: *app-environment
+      APP_ENV: local
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ocean_dd_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    command:
+      - celery
+      - --app
+      - ocean_dd.worker.celery_app:celery_app
+      - worker
+      - --loglevel=INFO
+      - --concurrency=${CELERY_CONCURRENCY:-2}
+    environment:
+      <<: *app-environment
+      APP_ENV: local
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ocean_dd_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ocean_dd_network:
+    driver: bridge
+

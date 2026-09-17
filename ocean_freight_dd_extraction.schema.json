@@ -1,0 +1,520 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/ocean-freight-dd-extraction.schema.json",
+  "title": "Ocean Freight D&D Document Extraction Bundle",
+  "description": "Canonical, evidence-bearing extraction shape for US ocean-freight detention and demurrage review. Extracted facts are kept separate from deterministic calculations and legal/compliance findings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "case_id",
+    "source_documents",
+    "bills_of_lading",
+    "invoices",
+    "tariff_rules",
+    "operational_events",
+    "field_evidence"
+  ],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0.0"},
+    "case_id": {"type": "string", "minLength": 1},
+    "source_documents": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/sourceDocument"},
+      "minItems": 1
+    },
+    "bills_of_lading": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/billOfLading"}
+    },
+    "invoices": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/invoice"}
+    },
+    "tariff_rules": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/tariffRule"}
+    },
+    "operational_events": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/operationalEvent"}
+    },
+    "field_evidence": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/fieldEvidence"}
+    },
+    "extraction_warnings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/extractionWarning"},
+      "default": []
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "date": {
+      "type": ["string", "null"],
+      "format": "date"
+    },
+    "dateTime": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": {"type": "string", "pattern": "^-?[0-9]+(\\.[0-9]{1,4})?$"},
+        "currency": {"type": "string", "pattern": "^[A-Z]{3}$"}
+      }
+    },
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "line_1": {"type": ["string", "null"]},
+        "line_2": {"type": ["string", "null"]},
+        "city": {"type": ["string", "null"]},
+        "state_or_region": {"type": ["string", "null"]},
+        "postal_code": {"type": ["string", "null"]},
+        "country_code": {"type": ["string", "null"], "pattern": "^[A-Z]{2}$"},
+        "raw_text": {"type": ["string", "null"]}
+      }
+    },
+    "party": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "party_id": {"type": ["string", "null"]},
+        "name": {"type": "string", "minLength": 1},
+        "role": {
+          "type": ["string", "null"],
+          "enum": [
+            "BILLING_PARTY", "BILLED_PARTY", "SHIPPER", "CONSIGNEE",
+            "NOTIFY_PARTY", "CARRIER", "NVOCC", "MTO", "FORWARDER",
+            "CUSTOMS_BROKER", "DRAYAGE_CARRIER", "OTHER", null
+          ]
+        },
+        "customer_number": {"type": ["string", "null"]},
+        "fmc_org_number": {"type": ["string", "null"]},
+        "scac": {"type": ["string", "null"], "pattern": "^[A-Z0-9]{2,4}$"},
+        "address": {"anyOf": [{"$ref": "#/$defs/address"}, {"type": "null"}]},
+        "email": {"type": ["string", "null"], "format": "email"},
+        "phone": {"type": ["string", "null"]}
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": ["string", "null"]},
+        "unlocode": {"type": ["string", "null"], "pattern": "^[A-Z]{2}[A-Z0-9]{3}$"},
+        "terminal_code": {"type": ["string", "null"]},
+        "facility_type": {
+          "type": ["string", "null"],
+          "enum": ["OCEAN_TERMINAL", "RAIL_RAMP", "CONTAINER_YARD", "DEPOT", "WAREHOUSE", "PORT", "OTHER", null]
+        },
+        "time_zone": {"type": ["string", "null"]},
+        "address": {"anyOf": [{"$ref": "#/$defs/address"}, {"type": "null"}]}
+      }
+    },
+    "sourceDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "document_type", "file_name", "sha256", "mime_type"],
+      "properties": {
+        "document_id": {"type": "string", "minLength": 1},
+        "document_type": {
+          "type": "string",
+          "enum": [
+            "DD_INVOICE", "BILL_OF_LADING", "SEA_WAYBILL", "TARIFF",
+            "SERVICE_CONTRACT", "TERMINAL_SCHEDULE", "ARRIVAL_NOTICE",
+            "DELIVERY_ORDER", "GATE_RECEIPT", "TRACKING_EVENT_EXPORT",
+            "APPOINTMENT_SCREENSHOT", "EMAIL", "PROOF_OF_PAYMENT", "OTHER"
+          ]
+        },
+        "file_name": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+        "mime_type": {"type": "string"},
+        "page_count": {"type": ["integer", "null"], "minimum": 1},
+        "language_codes": {"type": "array", "items": {"type": "string"}},
+        "received_at": {"$ref": "#/$defs/dateTime"},
+        "ingested_at": {"$ref": "#/$defs/dateTime"},
+        "text_layer_present": {"type": ["boolean", "null"]},
+        "ocr_engine": {"type": ["string", "null"]},
+        "ocr_engine_version": {"type": ["string", "null"]},
+        "parser_name": {"type": ["string", "null"]},
+        "parser_version": {"type": ["string", "null"]}
+      }
+    },
+    "container": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["container_number"],
+      "properties": {
+        "container_number": {"type": "string", "pattern": "^[A-Z]{4}[0-9]{7}$"},
+        "iso6346_check_digit_valid": {"type": ["boolean", "null"]},
+        "iso_size_type_code": {"type": ["string", "null"]},
+        "length_ft": {"type": ["integer", "null"], "enum": [20, 40, 45, 48, 53, null]},
+        "height_class": {"type": ["string", "null"], "enum": ["STANDARD", "HIGH_CUBE", "OTHER", null]},
+        "equipment_category": {
+          "type": ["string", "null"],
+          "enum": ["DRY", "REEFER_OPERATING", "REEFER_NON_OPERATING", "OPEN_TOP", "FLAT_RACK", "TANK", "SPECIAL", "OTHER", null]
+        },
+        "ownership": {"type": ["string", "null"], "enum": ["CARRIER_OWNED", "SHIPPER_OWNED", "UNKNOWN", null]},
+        "hazardous": {"type": ["boolean", "null"]},
+        "seal_numbers": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "cargoLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "marks_and_numbers": {"type": ["string", "null"]},
+        "package_count": {"type": ["integer", "null"], "minimum": 0},
+        "package_type": {"type": ["string", "null"]},
+        "description_of_goods": {"type": ["string", "null"]},
+        "hs_codes": {"type": "array", "items": {"type": "string"}},
+        "gross_weight_kg": {"type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]+)?$"},
+        "measurement_cbm": {"type": ["string", "null"], "pattern": "^[0-9]+(\\.[0-9]+)?$"},
+        "temperature_c": {"type": ["string", "null"]}
+      }
+    },
+    "bolContainer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipment", "cargo_lines"],
+      "properties": {
+        "equipment": {"$ref": "#/$defs/container"},
+        "cargo_lines": {"type": "array", "items": {"$ref": "#/$defs/cargoLine"}}
+      }
+    },
+    "billOfLading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "bill_of_lading_number", "containers"],
+      "properties": {
+        "document_id": {"type": "string"},
+        "bill_of_lading_number": {"type": "string", "minLength": 1},
+        "bill_type": {"type": ["string", "null"], "enum": ["MASTER", "HOUSE", "SEA_WAYBILL", "UNKNOWN", null]},
+        "negotiability": {"type": ["string", "null"], "enum": ["NEGOTIABLE", "NON_NEGOTIABLE", "UNKNOWN", null]},
+        "booking_number": {"type": ["string", "null"]},
+        "carrier_reference": {"type": ["string", "null"]},
+        "service_contract_number": {"type": ["string", "null"]},
+        "shipper": {"anyOf": [{"$ref": "#/$defs/party"}, {"type": "null"}]},
+        "consignee": {"anyOf": [{"$ref": "#/$defs/party"}, {"type": "null"}]},
+        "notify_parties": {"type": "array", "items": {"$ref": "#/$defs/party"}},
+        "carrier": {"anyOf": [{"$ref": "#/$defs/party"}, {"type": "null"}]},
+        "forwarding_agent": {"anyOf": [{"$ref": "#/$defs/party"}, {"type": "null"}]},
+        "vessel_name": {"type": ["string", "null"]},
+        "voyage_number": {"type": ["string", "null"]},
+        "place_of_receipt": {"anyOf": [{"$ref": "#/$defs/location"}, {"type": "null"}]},
+        "port_of_loading": {"anyOf": [{"$ref": "#/$defs/location"}, {"type": "null"}]},
+        "port_of_discharge": {"anyOf": [{"$ref": "#/$defs/location"}, {"type": "null"}]},
+        "place_of_delivery": {"anyOf": [{"$ref": "#/$defs/location"}, {"type": "null"}]},
+        "movement_type": {"type": ["string", "null"], "enum": ["PORT_TO_PORT", "MULTIMODAL", "CY_CY", "DOOR", "UNKNOWN", null]},
+        "haulage_mode": {"type": ["string", "null"], "enum": ["MERCHANT", "CARRIER", "UNKNOWN", null]},
+        "freight_payment_term": {"type": ["string", "null"], "enum": ["PREPAID", "COLLECT", "OTHER", "UNKNOWN", null]},
+        "shipped_on_board_date": {"$ref": "#/$defs/date"},
+        "issue_date": {"$ref": "#/$defs/date"},
+        "issue_place": {"type": ["string", "null"]},
+        "number_of_originals": {"type": ["integer", "null"], "minimum": 0},
+        "containers": {"type": "array", "items": {"$ref": "#/$defs/bolContainer"}, "minItems": 1},
+        "raw_incorporated_terms": {"type": ["string", "null"]}
+      }
+    },
+    "invoiceRateApplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rate", "quantity_days", "line_amount"],
+      "properties": {
+        "tier_label": {"type": ["string", "null"]},
+        "from_day": {"type": ["integer", "null"], "minimum": 1},
+        "to_day": {"type": ["integer", "null"], "minimum": 1},
+        "rate": {"$ref": "#/$defs/money"},
+        "quantity_days": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"},
+        "charged_dates": {"type": "array", "items": {"type": "string", "format": "date"}},
+        "line_amount": {"$ref": "#/$defs/money"}
+      }
+    },
+    "invoiceChargeLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["charge_line_id", "charge_type", "container_number", "billed_days", "line_total"],
+      "properties": {
+        "charge_line_id": {"type": "string"},
+        "charge_type": {"type": "string", "enum": ["DEMURRAGE", "DETENTION", "PER_DIEM", "STORAGE", "CHASSIS", "OTHER"]},
+        "container_number": {"type": "string", "pattern": "^[A-Z]{4}[0-9]{7}$"},
+        "location": {"anyOf": [{"$ref": "#/$defs/location"}, {"type": "null"}]},
+        "free_time_days": {"type": ["integer", "null"], "minimum": 0},
+        "free_time_day_basis": {"type": ["string", "null"], "enum": ["CALENDAR", "WORKING", "BUSINESS", "UNKNOWN", null]},
+        "free_time_start_date": {"$ref": "#/$defs/date"},
+        "free_time_end_date": {"$ref": "#/$defs/date"},
+        "container_availability_date": {"$ref": "#/$defs/date"},
+        "earliest_return_date": {"$ref": "#/$defs/date"},
+        "charge_start_date": {"$ref": "#/$defs/date"},
+        "charge_end_date": {"$ref": "#/$defs/date"},
+        "specific_charged_dates": {"type": "array", "items": {"type": "string", "format": "date"}},
+        "billed_days": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$"},
+        "rate_source_type": {"type": ["string", "null"], "enum": ["TARIFF", "SERVICE_CONTRACT", "TERMINAL_SCHEDULE", "NEGOTIATED_ARRANGEMENT", "UNKNOWN", null]},
+        "rate_source_name": {"type": ["string", "null"]},
+        "rate_source_number": {"type": ["string", "null"]},
+        "rate_source_section": {"type": ["string", "null"]},
+        "rate_applications": {"type": "array", "items": {"$ref": "#/$defs/invoiceRateApplication"}},
+        "subtotal": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "tax": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "administrative_fee": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "line_total": {"$ref": "#/$defs/money"},
+        "description": {"type": ["string", "null"]}
+      }
+    },
+    "disputeContact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "email": {"type": ["string", "null"], "format": "email"},
+        "phone": {"type": ["string", "null"]},
+        "portal_url": {"type": ["string", "null"], "format": "uri"},
+        "qr_or_watermark_present": {"type": ["boolean", "null"]},
+        "required_documentation_url": {"type": ["string", "null"], "format": "uri"},
+        "request_window_days": {"type": ["integer", "null"], "minimum": 0},
+        "request_window_day_basis": {"type": ["string", "null"], "enum": ["CALENDAR", "BUSINESS", "WORKING", "UNKNOWN", null]},
+        "resolution_window_days": {"type": ["integer", "null"], "minimum": 0},
+        "resolution_window_day_basis": {"type": ["string", "null"], "enum": ["CALENDAR", "BUSINESS", "WORKING", "UNKNOWN", null]},
+        "raw_instructions": {"type": ["string", "null"]}
+      }
+    },
+    "invoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id", "invoice_number", "invoice_date", "billing_party",
+        "billed_party", "bill_of_lading_numbers", "shipment_direction",
+        "charge_lines", "total_amount_due"
+      ],
+      "properties": {
+        "document_id": {"type": "string"},
+        "invoice_number": {"type": "string"},
+        "invoice_status": {"type": ["string", "null"], "enum": ["ORIGINAL", "REVISED", "CREDIT", "CANCELLED", "UNKNOWN", null]},
+        "supersedes_invoice_number": {"type": ["string", "null"]},
+        "invoice_date": {"type": "string", "format": "date"},
+        "invoice_due_date": {"$ref": "#/$defs/date"},
+        "underlying_invoice_number": {"type": ["string", "null"]},
+        "underlying_invoice_issue_date": {"$ref": "#/$defs/date"},
+        "billing_party": {"$ref": "#/$defs/party"},
+        "billed_party": {"$ref": "#/$defs/party"},
+        "billed_party_interest_basis": {"type": ["string", "null"]},
+        "bill_of_lading_numbers": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "booking_numbers": {"type": "array", "items": {"type": "string"}},
+        "shipment_direction": {"type": "string", "enum": ["IMPORT", "EXPORT", "UNKNOWN"]},
+        "ports_of_discharge": {"type": "array", "items": {"$ref": "#/$defs/location"}},
+        "vessel_name": {"type": ["string", "null"]},
+        "voyage_number": {"type": ["string", "null"]},
+        "arrival_date": {"$ref": "#/$defs/date"},
+        "charge_lines": {"type": "array", "items": {"$ref": "#/$defs/invoiceChargeLine"}, "minItems": 1},
+        "subtotal": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "tax_total": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "credit_total": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "total_amount_due": {"$ref": "#/$defs/money"},
+        "payment_terms": {"type": ["string", "null"]},
+        "remittance_instructions": {"type": ["string", "null"]},
+        "dispute_contact": {"anyOf": [{"$ref": "#/$defs/disputeContact"}, {"type": "null"}]},
+        "certifies_fmc_rule_consistency": {"type": ["boolean", "null"]},
+        "certifies_billing_party_did_not_contribute": {"type": ["boolean", "null"]},
+        "certification_raw_text": {"type": ["string", "null"]}
+      }
+    },
+    "applicabilityScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shipment_direction": {"type": ["string", "null"], "enum": ["IMPORT", "EXPORT", "BOTH", "UNKNOWN", null]},
+        "origin_locations": {"type": "array", "items": {"$ref": "#/$defs/location"}},
+        "destination_locations": {"type": "array", "items": {"$ref": "#/$defs/location"}},
+        "ports": {"type": "array", "items": {"$ref": "#/$defs/location"}},
+        "terminals_or_depots": {"type": "array", "items": {"$ref": "#/$defs/location"}},
+        "movement_types": {"type": "array", "items": {"type": "string"}},
+        "haulage_modes": {"type": "array", "items": {"type": "string"}},
+        "equipment_categories": {"type": "array", "items": {"type": "string"}},
+        "container_lengths_ft": {"type": "array", "items": {"type": "integer"}},
+        "hazardous": {"type": ["boolean", "null"]},
+        "commodity_inclusions": {"type": "array", "items": {"type": "string"}},
+        "commodity_exclusions": {"type": "array", "items": {"type": "string"}},
+        "named_customer_or_affiliate_scope": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "freeTimeRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["charge_type", "free_days", "day_basis", "start_event", "stop_event"],
+      "properties": {
+        "charge_type": {"type": "string", "enum": ["DEMURRAGE", "DETENTION", "COMBINED_DD", "PER_DIEM", "STORAGE", "CHASSIS"]},
+        "free_time_mode": {"type": ["string", "null"], "enum": ["SEPARATE", "COMBINED", "UNKNOWN", null]},
+        "free_days": {"type": "integer", "minimum": 0},
+        "day_basis": {"type": "string", "enum": ["CALENDAR", "WORKING", "BUSINESS"]},
+        "working_day_definition": {"type": ["string", "null"]},
+        "holiday_calendar_name": {"type": ["string", "null"]},
+        "weekend_days": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 7}},
+        "start_event": {
+          "type": "string",
+          "enum": [
+            "DISCHARGE", "CARGO_AVAILABLE", "NOTICE_OF_AVAILABILITY", "CUSTOMS_RELEASE",
+            "FREIGHT_RELEASE", "DOCUMENT_RELEASE", "OUT_GATE_FULL", "EMPTY_RELEASE",
+            "EARLIEST_RETURN_DATE", "OTHER"
+          ]
+        },
+        "start_offset_days": {"type": "integer"},
+        "start_date_inclusive": {"type": ["boolean", "null"]},
+        "start_cutoff_local_time": {"type": ["string", "null"], "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"},
+        "time_zone": {"type": ["string", "null"]},
+        "stop_event": {
+          "type": "string",
+          "enum": ["OUT_GATE_FULL", "EMPTY_IN_GATE", "FULL_IN_GATE", "CARRIER_ACCEPTANCE", "OTHER"]
+        },
+        "stop_date_inclusive": {"type": ["boolean", "null"]},
+        "partial_day_treatment": {"type": ["string", "null"], "enum": ["FULL_DAY", "PRORATED", "NOT_CHARGED", "UNKNOWN", null]},
+        "billable_day_basis_after_free_time": {"type": ["string", "null"], "enum": ["CALENDAR", "WORKING", "BUSINESS", "SAME_AS_FREE_TIME", "UNKNOWN", null]},
+        "tier_index_basis": {"type": ["string", "null"], "enum": ["ELAPSED_DAY_FROM_CLOCK_START", "CHARGEABLE_DAY_ORDINAL", "UNKNOWN", null]},
+        "excluded_day_conditions": {"type": "array", "items": {"type": "string"}},
+        "extension_conditions": {"type": "array", "items": {"type": "string"}},
+        "appointment_requirements": {"type": ["string", "null"]},
+        "authorized_return_location_rule": {"type": ["string", "null"]},
+        "raw_clause_text": {"type": "string"}
+      }
+    },
+    "rateTier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["charge_type", "from_day", "rate"],
+      "properties": {
+        "charge_type": {"type": "string", "enum": ["DEMURRAGE", "DETENTION", "COMBINED_DD", "PER_DIEM", "STORAGE", "CHASSIS"]},
+        "from_day": {"type": "integer", "minimum": 1},
+        "to_day": {"type": ["integer", "null"], "minimum": 1},
+        "tier_index_basis": {"type": "string", "enum": ["ELAPSED_DAY_FROM_CLOCK_START", "CHARGEABLE_DAY_ORDINAL"]},
+        "equipment_category": {"type": ["string", "null"]},
+        "container_length_ft": {"type": ["integer", "null"]},
+        "rate": {"$ref": "#/$defs/money"},
+        "rate_unit": {"type": "string", "enum": ["PER_CONTAINER_PER_DAY", "PER_CONTAINER_PER_HOUR", "FLAT"]}
+      }
+    },
+    "tariffRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id", "rule_id", "source_type", "source_name", "carrier_or_mto",
+        "effective_from", "scope", "free_time_rules", "rate_tiers"
+      ],
+      "properties": {
+        "document_id": {"type": "string"},
+        "rule_id": {"type": "string"},
+        "source_type": {"type": "string", "enum": ["TARIFF", "SERVICE_CONTRACT", "TERMINAL_SCHEDULE", "NEGOTIATED_ARRANGEMENT"]},
+        "source_name": {"type": "string"},
+        "tariff_number": {"type": ["string", "null"]},
+        "rule_number": {"type": ["string", "null"]},
+        "section_number": {"type": ["string", "null"]},
+        "service_contract_number": {"type": ["string", "null"]},
+        "amendment_number": {"type": ["string", "null"]},
+        "revision_number": {"type": ["string", "null"]},
+        "carrier_or_mto": {"$ref": "#/$defs/party"},
+        "contracting_parties": {"type": "array", "items": {"$ref": "#/$defs/party"}},
+        "publication_date": {"$ref": "#/$defs/date"},
+        "effective_from": {"type": "string", "format": "date"},
+        "effective_to": {"$ref": "#/$defs/date"},
+        "effective_date_basis": {"type": ["string", "null"], "enum": ["CARGO_RECEIPT_AT_ORIGIN", "DISCHARGE_DATE", "AVAILABILITY_DATE", "BOOKING_DATE", "BOL_DATE", "OTHER", "UNKNOWN", null]},
+        "governing_law_or_jurisdiction": {"type": ["string", "null"]},
+        "precedence_text": {"type": ["string", "null"]},
+        "scope": {"$ref": "#/$defs/applicabilityScope"},
+        "free_time_rules": {"type": "array", "items": {"$ref": "#/$defs/freeTimeRule"}, "minItems": 1},
+        "rate_tiers": {"type": "array", "items": {"$ref": "#/$defs/rateTier"}},
+        "administrative_fee": {"anyOf": [{"$ref": "#/$defs/money"}, {"type": "null"}]},
+        "tax_or_surcharge_rules": {"type": "array", "items": {"type": "string"}},
+        "dispute_procedure_text": {"type": ["string", "null"]},
+        "supersedes_rule_id": {"type": ["string", "null"]}
+      }
+    },
+    "operationalEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "container_number", "event_type", "occurred_at", "source_document_ids"],
+      "properties": {
+        "event_id": {"type": "string"},
+        "container_number": {"type": "string", "pattern": "^[A-Z]{4}[0-9]{7}$"},
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "VESSEL_ARRIVAL", "DISCHARGE", "CARGO_AVAILABLE", "AVAILABILITY_NOTICE_SENT",
+            "CUSTOMS_HOLD_START", "CUSTOMS_HOLD_END", "FREIGHT_HOLD_START", "FREIGHT_HOLD_END",
+            "DOCUMENT_HOLD_START", "DOCUMENT_HOLD_END", "APPOINTMENT_REQUESTED",
+            "APPOINTMENT_DENIED", "APPOINTMENT_CONFIRMED", "TERMINAL_CLOSED",
+            "TERMINAL_REOPENED", "CHASSIS_UNAVAILABLE", "CHASSIS_AVAILABLE",
+            "EMPTY_RETURN_LOCATION_ASSIGNED", "EMPTY_RETURN_REFUSED", "OUT_GATE_FULL",
+            "EMPTY_IN_GATE", "FULL_IN_GATE", "OTHER"
+          ]
+        },
+        "occurred_at": {"type": "string", "format": "date-time"},
+        "ended_at": {"$ref": "#/$defs/dateTime"},
+        "location": {"anyOf": [{"$ref": "#/$defs/location"}, {"type": "null"}]},
+        "actor": {"anyOf": [{"$ref": "#/$defs/party"}, {"type": "null"}]},
+        "source_document_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "external_event_id": {"type": ["string", "null"]},
+        "raw_description": {"type": ["string", "null"]},
+        "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "boundingBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x0", "y0", "x1", "y1", "coordinate_space"],
+      "properties": {
+        "x0": {"type": "number"},
+        "y0": {"type": "number"},
+        "x1": {"type": "number"},
+        "y1": {"type": "number"},
+        "coordinate_space": {"type": "string", "enum": ["PDF_POINTS", "PIXELS", "NORMALIZED_0_1"]}
+      }
+    },
+    "fieldEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "document_id", "json_pointer", "raw_text", "page_number", "confidence"],
+      "properties": {
+        "evidence_id": {"type": "string"},
+        "document_id": {"type": "string"},
+        "json_pointer": {"type": "string", "pattern": "^/"},
+        "raw_text": {"type": "string"},
+        "page_number": {"type": "integer", "minimum": 1},
+        "bounding_box": {"anyOf": [{"$ref": "#/$defs/boundingBox"}, {"type": "null"}]},
+        "table_id": {"type": ["string", "null"]},
+        "row_header": {"type": ["string", "null"]},
+        "column_header": {"type": ["string", "null"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "normalization_method": {"type": ["string", "null"]},
+        "date_format_assumption": {"type": ["string", "null"], "enum": ["MDY", "DMY", "YMD", "UNAMBIGUOUS", "UNRESOLVED", null]},
+        "review_status": {"type": "string", "enum": ["UNREVIEWED", "ACCEPTED", "CORRECTED", "REJECTED"]}
+      }
+    },
+    "extractionWarning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warning_code", "severity", "message"],
+      "properties": {
+        "warning_code": {
+          "type": "string",
+          "enum": [
+            "AMBIGUOUS_DATE", "INVALID_CONTAINER_CHECK_DIGIT", "CONFLICTING_IDENTIFIER",
+            "MISSING_REQUIRED_FIELD", "TABLE_ALIGNMENT_UNCERTAIN", "LOW_OCR_CONFIDENCE",
+            "CURRENCY_AMBIGUOUS", "EFFECTIVE_RULE_UNRESOLVED", "DUPLICATE_DOCUMENT", "OTHER"
+          ]
+        },
+        "severity": {"type": "string", "enum": ["INFO", "WARNING", "ERROR"]},
+        "json_pointer": {"type": ["string", "null"]},
+        "document_id": {"type": ["string", "null"]},
+        "message": {"type": "string"}
+      }
+    }
+  }
+}
