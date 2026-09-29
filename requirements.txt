@@ -1,3 +1,4 @@
+psycopg[binary]
 fastapi
 uvicorn
 celery
